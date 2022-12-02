@@ -1,0 +1,109 @@
+name: Manage DAGs
+
+on:
+  push:
+    paths:
+    - "chapter5/dags/**"
+    branches:
+    - "main"
+
+jobs:
+  get-updated-dags:
+    runs-on: ubuntu-20.04
+    outputs:
+      dags: ${{ steps.get-dags.outputs.dags }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Get created or updated DAGs
+      id: get-dags
+      shell: bash
+      run: |
+        DAGS="$(git diff --name-only --diff-filter=AM HEAD^ | grep '^chapter5/dags/' | sed 's|^chapter5/dags/||' | uniq || true)"
+        echo $DAGS
+        echo "::set-output name=dags::$(jq -ncR '[inputs]' <<< $DAGS)"
+
+  get-deleted-dags:
+    runs-on: ubuntu-20.04
+    outputs:
+      dags: ${{ steps.get-dags.outputs.dags }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Get deleted DAGs
+      id: get-dags
+      shell: bash
+      run: |
+        DAGS="$(git diff --name-only --diff-filter=D HEAD^ | grep '^chapter5/dags/' | sed 's|^chapter5/dags/||' | uniq || true)"
+        echo $DAGS
+        echo "::set-output name=dags::$(jq -ncR '[inputs]' <<< $DAGS)"
+
+  deploy-dag:
+    runs-on: ubuntu-20.04
+    needs: get-updated-dags
+    if: ${{ needs.get-updated-dags.outputs.dags != '[]' && needs.get-updated-dags.outputs.dags != '[""]' }}
+    strategy:
+      matrix:
+        dag: ${{ fromJson(needs.get-updated-dags.outputs.dags) }}
+    defaults:
+      run:
+        working-directory: chapter5/dags
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Auth GCP
+      uses: google-github-actions/auth@v0
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Setup cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+    
+    - name: Deploy DAG
+      env:
+        composer_name: starterkit
+      run: |
+        GCS=$(gcloud composer environments describe ${composer_name} \
+          --location asia-northeast1 \
+          --format="get(config.dagGcsPrefix)")
+        gsutil cp ${{ matrix.dag }} $GCS
+
+  delete-dag:
+    runs-on: ubuntu-20.04
+    needs: get-deleted-dags
+    if: ${{ needs.get-deleted-dags.outputs.dags != '[]' && needs.get-deleted-dags.outputs.dags != '[""]' }}
+    strategy:
+      matrix:
+        dag: ${{ fromJson(needs.get-deleted-dags.outputs.dags) }}
+    defaults:
+      run:
+        working-directory: chapter5/dags
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Auth GCP
+      uses: google-github-actions/auth@v0
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+    
+    - name: Setup cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+
+    - name: Delete DAG
+      env:
+        composer_name: starterkit
+      run: |
+        GCS=$(gcloud composer environments describe ${composer_name} \
+          --location asia-northeast1 \
+          --format="get(config.dagGcsPrefix)")
+        gsutil rm $GCS/${{ matrix.dag }}

@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+poetry run autoflake -ir --remove-all-unused-imports --remove-unused-variables --remove-duplicate-keys .
+poetry run isort .
+poetry run black .

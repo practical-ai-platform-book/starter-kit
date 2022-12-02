@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "starter-kit"
+version = "0.1.0"
+description = "ハンズオンで使うパッケージ"
+authors = ["Shion Honda"] # TODO: fix
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "3.9.10"
+pandas = "^1.4.1"
+google-cloud-storage = "^2.1.0"
+google-cloud-bigquery = "^2.34.2"
+google-cloud-firestore = "^2.4.0"
+google-api-core = "^2.7.1"
+fastapi = "^0.75.0"
+uvicorn = {extras = ["standard"], version = "^0.17.6"}
+gunicorn = "^20.1.0"
+pydantic = "^1.9.0"
+apache-airflow = "^2.2.4"
+aiohttp = "^3.8.1"
+pendulum = "^2.1.2"
+scipy = "^1.9.3"
+
+[tool.poetry.dev-dependencies]
+ipython = "^8.1.1"
+pytest = "^7.1.0"
+black = "^22.1.0"
+isort = "^5.10.1"
+mypy = "^0.940"
+flake8 = "^4.0.1"
+autoflake = "^1.4"
+
+[tool.black]
+line-length = 80
+
+[tool.isort]
+line_length = 80
+multi_line_output = 3
+include_trailing_comma = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
